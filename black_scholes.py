@@ -1,0 +1,73 @@
+import math
+import numpy as np
+import matplotlib as plt
+import yfinance as yf
+import pytz
+from datetime import datetime
+from scipy.stats import stats
+from scipy.stats import norm
+import pandas as pd
+
+class BlackScholesModel:
+    
+    def __init__(self, r, ticker=None, sigma=0, t=0, s0=0, k=0):
+        self.ticker = ticker
+        self.r = r
+        self.sigma = sigma
+        self.t = t
+        self.s0 = s0
+        self.k = k
+
+    def set_time_to_expiration(self):
+        expirations = self.ticker.options
+        expiration = expirations[0]
+        et = pytz.timezone('US/Eastern')
+        expiry = datetime.strptime(expiration, "%Y-%m-%d")
+        expiry_et = et.localize(expiry)
+        au = pytz.timezone('Australia/Sydney')
+        expiry_au = expiry_et.astimezone(au)
+        today_au = datetime.now(au)
+        t = (expiry_au - today_au).days / 365
+        self.t = t
+        
+    def set_s0(self):
+        # date_str = "2025-09-15"
+        # date_obj = datetime.strptime(date_str, "%Y-%m-%d")
+        # data = self.ticker.history(start=date_str, end=date_str)
+        data = self.ticker.history(period='1d')
+        s0 = data['Close'].iloc[0]
+        self.s0 = s0
+        
+    def set_k(self):
+        expirations = self.ticker.options
+        expiration = expirations[0]
+        option_chain = self.ticker.option_chain(expiration)
+        calls = option_chain.calls
+        strike_prices = calls['strike'].tolist()
+        self.k = strike_prices[0]  
+    
+        
+    def set_historical_volatility(self):
+        data = self.ticker.history(period="1y")
+        close_prices = data['Close']
+        log_returns = np.log(close_prices / close_prices.shift(1)).dropna()
+        std_devs = log_returns.std()
+        annualised_vol = std_devs * np.sqrt(252)
+        self.sigma = annualised_vol
+
+        
+    def get_call_option_price(self):
+        d1 = (math.log(self.s0 / self.k) + (self.r + (((self.sigma) ** 2) / 2)) * self.t) / (self.sigma * math.sqrt(self.t))
+        d2 = d1 - self.sigma * math.sqrt(self.t)
+        c = norm.cdf(d1) * self.s0 - norm.cdf(d2) * self.k * math.exp(-self.r * self.t)
+        return c
+    
+if __name__ == "__main__":
+    ticker = yf.Ticker("AAPL")
+    model = BlackScholesModel(0.05, ticker)
+    model.set_s0()
+    model.set_time_to_expiration()
+    model.set_k()
+    model.set_historical_volatility()
+    price = model.get_call_option_price()
+    print(price)
