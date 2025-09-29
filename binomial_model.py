@@ -14,11 +14,12 @@ import pandas as pd
 
 # s0, T, K, p (risk neutral probability), u, d, N, j, sigma (for u)
 
+N = 10000
+
 class BinomialTreeModel:
 
-    def __init__(self, n, r, ticker=None, sigma=0, t=0, s0=0, k=0):
+    def __init__(self, r, ticker=None, sigma=0, t=0, s0=0, k=0):
         self.ticker = ticker
-        self.n = n
         self.r = r
         self.sigma = sigma
         self.t = t
@@ -63,12 +64,12 @@ class BinomialTreeModel:
         self.sigma = annualised_vol
 
     def get_up_and_down_factors(self, sigma, t):
-        up = math.exp(sigma * math.sqrt(t/self.n))
+        up = math.exp(sigma * math.sqrt(t/N))
         down = 1/up
         return [up, down]
 
     def get_risk_neutral_probabilities(self, u, d, t):
-        dT = t / self.n
+        dT = t / N
         p =  (np.exp(self.r * dT) - d) / (u - d)
         q = 1 - p
         return [p, q]
@@ -83,32 +84,32 @@ class BinomialTreeModel:
         d = self.get_up_and_down_factors(self.sigma, self.t)[1]
         p = self.get_risk_neutral_probabilities(u, d, self.t)[0]
         q = self.get_risk_neutral_probabilities(u, d, self.t)[1]
-        dT = self.t / self.n
+        dT = self.t / N
         
-        for i in range(self.n + 1):
+        for i in range(N + 1):
             row = []
-            for j in range(self.n + 1):
+            for j in range(N + 1):
                 row.append(0.0)
             option_dp.append(row)
                 
-        stock = [[0.0 for j in range(i+1)] for i in range(self.n+1)]
-        for i in range(self.n+1):
+        stock = [[0.0 for j in range(i+1)] for i in range(N+1)]
+        for i in range(N+1):
             for j in range(i+1):
                 stock[i][j] = self.s0 * (u**j) * (d**(i-j))
                 
         # fill from bottom up so calculate C_N,j first where j is the number of u steps
         # rows = time steps, cols = num of up moves
-        for i in range(self.n + 1):
-            option_dp[self.n][i] = max(0, stock[self.n][i] - self.k)
+        for i in range(N + 1):
+            option_dp[N][i] = max(0, stock[N][i] - self.k)
         
-        for i in range(self.n - 1, -1, -1):
+        for i in range(N - 1, -1, -1):
             for j in range(i + 1):
                 option_dp[i][j] = math.exp(-self.r * dT) * (p * option_dp[i + 1][j + 1] + q * option_dp[i + 1][j])
         return option_dp[0][0]
         
 if __name__ == "__main__":
     ticker = yf.Ticker("AAPL")
-    model = BinomialTreeModel(10, 0.05, ticker)
+    model = BinomialTreeModel(0.05, ticker)
     model.set_s0()
     model.set_time_to_expiration()
     model.set_k()
