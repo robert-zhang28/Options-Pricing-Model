@@ -4,7 +4,6 @@ import matplotlib as plt
 import yfinance as yf
 import pytz
 from datetime import datetime
-import pandas as pd
 
 # 3 models: binomial, monte carlo, black-scholes
 # implement on european call options first

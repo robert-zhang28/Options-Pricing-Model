@@ -4,9 +4,7 @@ import matplotlib as plt
 import yfinance as yf
 import pytz
 from datetime import datetime
-from scipy.stats import stats
 from scipy.stats import norm
-import pandas as pd
 
 class BlackScholesModel:
     
