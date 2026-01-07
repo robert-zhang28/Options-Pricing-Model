@@ -7,10 +7,16 @@ import black_scholes as bs
 from datetime import datetime
 from scipy.stats import norm
 
-def plot_volatility_surface():
-    pass
 
-
+class VolatilitySurface:
+    
+    def __init__(self):
+        pass
+    
+    
+    def plot_curve(self, t, k):
+        time_to_expiry_axis = np.linspace(0, t)
+        strike_axis = np.linspace(0, k)
 
 
 

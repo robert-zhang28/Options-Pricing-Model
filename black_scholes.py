@@ -5,6 +5,9 @@ import yfinance as yf
 import pytz
 from datetime import datetime
 from scipy.stats import norm
+import pandas as pd
+
+#TODO: fix the way to select s0, k, and expiration dates (mb)
 
 class BlackScholesModel:
     
@@ -15,10 +18,12 @@ class BlackScholesModel:
         self.t = t
         self.s0 = s0
         self.k = k
+        self.calls = None
 
     def set_time_to_expiration(self):
         expirations = self.ticker.options
         expiration = expirations[0]
+        #print(expirations)
         et = pytz.timezone('US/Eastern')
         expiry = datetime.strptime(expiration, "%Y-%m-%d")
         expiry_et = et.localize(expiry)
@@ -32,17 +37,34 @@ class BlackScholesModel:
         # date_str = "2025-09-15"
         # date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         # data = self.ticker.history(start=date_str, end=date_str)
-        data = self.ticker.history(period='1d')
-        s0 = data['Close'].iloc[0]
+        data = self.ticker.history()
+        #print(data)
+        s0 = data['Close'].iloc[-1]
         self.s0 = s0
+        
+    def set_calls(self):
+        expirations = self.ticker.options
+        all_calls = []
+        for exp in expirations:
+            chain = self.ticker.option_chain(exp)
+            calls = chain.calls.copy()
+            calls['expiration'] = exp
+            all_calls.append(calls)
+        all_calls_df = pd.concat(all_calls, ignore_index=True)
+        self.calls = all_calls_df
+        
         
     def set_k(self):
         expirations = self.ticker.options
         expiration = expirations[0]
+        print(expirations)
         option_chain = self.ticker.option_chain(expiration)
+        # print(option_chain)
         calls = option_chain.calls
         strike_prices = calls['strike'].tolist()
-        self.k = strike_prices[0]  
+        print(calls[['strike', 'lastPrice', 'impliedVolatility']].head())
+        print(strike_prices)
+        self.k = min(strike_prices, key=lambda x: abs(x - self.s0))
     
         
     def set_historical_volatility(self):
@@ -54,11 +76,32 @@ class BlackScholesModel:
         self.sigma = annualised_vol
 
         
-    def get_call_option_price(self):
-        d1 = (math.log(self.s0 / self.k) + (self.r + (((self.sigma) ** 2) / 2)) * self.t) / (self.sigma * math.sqrt(self.t))
-        d2 = d1 - self.sigma * math.sqrt(self.t)
+    def get_call_option_price(self, sigma=None):
+        if sigma is None:
+            sigma = self.sigma 
+        d1 = (math.log(self.s0 / self.k) + (self.r + (((sigma) ** 2) / 2)) * self.t) / (sigma * math.sqrt(self.t))
+        d2 = d1 - sigma * math.sqrt(self.t)
         c = norm.cdf(d1) * self.s0 - norm.cdf(d2) * self.k * math.exp(-self.r * self.t)
         return c
+    
+    def get_vega(self, sigma=None):
+        if sigma is None:
+            sigma = self.sigma 
+        d1 = (math.log(self.s0 / self.k) + (self.r + (((sigma) ** 2) / 2)) * self.t) / (sigma * math.sqrt(self.t))
+        return self.s0 * math.sqrt(self.t) * norm.pdf(d1) 
+    
+    def solve_for_iv(self, market_price, tol=0.00001):
+        max_iterations = 1000
+        vol_old = 0.2
+        for i in range(max_iterations):
+            bs_price = self.get_call_option_price(vol_old)
+            vega = self.get_vega(vol_old)
+            c = bs_price - market_price
+            vol_new = vol_old - c / vega
+            if (abs(vol_old - vol_new) < tol):
+                return vol_new
+            vol_old = vol_new
+        return np.nan
     
 if __name__ == "__main__":
     ticker = yf.Ticker("AAPL")

@@ -41,8 +41,8 @@ class BinomialTreeModel:
         # date_str = "2025-09-15"
         # date_obj = datetime.strptime(date_str, "%Y-%m-%d")
         # data = self.ticker.history(start=date_str, end=date_str)
-        data = self.ticker.history(period='1d')
-        s0 = data['Close'].iloc[0]
+        data = self.ticker.history()
+        s0 = data['Close'].iloc[-1]
         self.s0 = s0
         
     def set_k(self):
