@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import matplotlib as plt
 import yfinance as yf
 import pytz
 from datetime import datetime

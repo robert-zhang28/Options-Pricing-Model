@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import matplotlib as plt
 import yfinance as yf
 import pytz
 from datetime import datetime
@@ -34,13 +33,18 @@ class BlackScholesModel:
         self.t = t
         
     def set_s0(self):
-        # date_str = "2025-09-15"
-        # date_obj = datetime.strptime(date_str, "%Y-%m-%d")
-        # data = self.ticker.history(start=date_str, end=date_str)
-        data = self.ticker.history()
-        #print(data)
-        s0 = data['Close'].iloc[-1]
-        self.s0 = s0
+        try:
+            # Get the most recent closing price
+            hist = self.ticker.history(period="1d")
+            self.s0 = hist['Close'].iloc[-1]
+        except Exception as e:
+            print(f"Error fetching stock price: {e}")
+            # Fallback to the last available price
+            hist = self.ticker.history()
+            if not hist.empty:
+                self.s0 = hist['Close'].iloc[-1]
+            else:
+                raise ValueError("Could not fetch stock price data")
         
     def set_calls(self):
         expirations = self.ticker.options

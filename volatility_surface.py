@@ -1,6 +1,5 @@
 import math
 import numpy as np
-import matplotlib as plt
 import yfinance as yf
 import binomial_model as bm
 import black_scholes as bs
@@ -17,6 +16,6 @@ class VolatilitySurface:
     def plot_curve(self, t, k):
         time_to_expiry_axis = np.linspace(0, t)
         strike_axis = np.linspace(0, k)
-
+        
 
 
